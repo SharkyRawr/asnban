@@ -13,13 +13,14 @@ def query(qry: str) -> typing.Tuple[str, str, str]:
         'family': (None, 'ipv4'),
         'method_whois': (None, 'whois'),
         'bulk_paste': (None, qry),
-        'submit_paste': (None, ''),
+        'submit_paste': (None, 'Submit'),
     }
     r = requests.post(__ENDPOINT, files=args)
     r.raise_for_status()
-    #print(r.text)
+    # print(r.text)
 
     finds = CYMRU_RESULT_RE.findall(r.text)
+    # print(finds)
     if len(finds) != 2:
         raise Exception("Didn't get the expected number of results from API")
 
