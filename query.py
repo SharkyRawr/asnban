@@ -14,6 +14,8 @@ ap.add_argument("--iptables-action", nargs='?', default="DROP", help="which acti
 
 ap.add_argument('--json',  action='store_true', help="output as JSON")
 
+ap.add_argument("--ufw", action='store_true', help="output as 'ufw deny' invocations")
+
 if __name__ == "__main__":
     from providers import cymru, bgptools
 
@@ -42,6 +44,11 @@ if __name__ == "__main__":
 
         if args.json:
             print(json.dumps(prefixes, indent=2, separators=(',', ': ')))#
+            sys.exit(0)
+
+        if args.ufw:
+            for p in prefixes:
+                print("ufw insert 1 deny from {prefix}".format(prefix=p))
             sys.exit(0)
 
         
