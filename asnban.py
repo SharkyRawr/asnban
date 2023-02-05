@@ -6,10 +6,9 @@ from argparse import ArgumentParser
 
 ap = ArgumentParser()
 ap.add_argument("--ip", nargs='?', help="IP-to-ASN lookup using asn.cymru.com")
-ap.add_argument("--asn", nargs='?',
-                help="ASN-to-prefixes lookup using bgp.tools")
-ap.add_argument('--ban', nargs='?',
-                help='ban all prefixes owned by the AS that also owns IP')
+ap.add_argument("--asn", nargs='?', help="ASN-to-prefixes lookup using bgp.tools")
+ap.add_argument("--asn2", nargs='?', help="ASN-to-prefixes lookup using enjen.tools")
+ap.add_argument('--ban', nargs='?', help='ban all prefixes owned by the AS that also owns IP')
 
 ap.add_argument("--iptables", action='store_true',
                 help="output as iptables invocations")
@@ -67,11 +66,11 @@ def print_prefixes(prefixes: typing.List[str], args):
 
 
 if __name__ == "__main__":
-    from providers import bgptools, cymru
+    from providers import bgptools, cymru, enjen
 
     args = ap.parse_args()
 
-    if not args.ip and not args.asn and not args.ban:
+    if not args.ip and not args.asn and not args.asn2 and not args.ban:
         ap.print_help()
         sys.exit(1)
 
@@ -81,6 +80,9 @@ if __name__ == "__main__":
         sys.exit(0)
     elif args.asn:
         prefixes = bgptools.query_prefixes(args.asn)
+        print_prefixes(prefixes, args)
+    elif args.asn2:
+        prefixes = enjen.query_prefixes(args.asn2)
         print_prefixes(prefixes, args)
     elif args.ban:
         asn, ip, name = cymru.query(args.ban)
