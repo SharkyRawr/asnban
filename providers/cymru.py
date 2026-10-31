@@ -5,19 +5,19 @@ import requests
 
 from . import USER_AGENT
 
-__ENDPOINT = 'https://asn.cymru.com/cgi-bin/whois.cgi'
-CYMRU_RESULT_RE = re.compile(r'(.+)\s*\|\s*(.+)\s?\|\s*(.+)\s?')
+__ENDPOINT = "https://asn.cymru.com/cgi-bin/whois.cgi"
+CYMRU_RESULT_RE = re.compile(r"(.+)\s*\|\s*(.+)\s?\|\s*(.+)\s?")
 
 
 def query(qry: str) -> typing.Tuple[str, str, str]:
     args = {
-        'action': (None, 'do_whois'),
-        'family': (None, 'ipv4'),
-        'method_whois': (None, 'whois'),
-        'bulk_paste': (None, qry),
-        'submit_paste': (None, 'Submit'),
+        "action": (None, "do_whois"),
+        "family": (None, "ipv4"),
+        "method_whois": (None, "whois"),
+        "bulk_paste": (None, qry),
+        "submit_paste": (None, "Submit"),
     }
-    r = requests.post(__ENDPOINT, files=args, headers={'User-Agent': USER_AGENT})
+    r = requests.post(__ENDPOINT, files=args, headers={"User-Agent": USER_AGENT})
     r.raise_for_status()
     # print(r.text)
 
