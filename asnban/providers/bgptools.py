@@ -32,6 +32,15 @@ def _table_text() -> str:
 
 
 def query_prefixes(asn: str) -> list[str]:
+    """Return prefixes originated by an ASN according to bgp.tools.
+
+    Reads the cached bgp.tools ``table.txt`` export, downloading it again
+    when the local copy is older than two hours.
+
+    :param asn: ASN, with or without a leading ``AS``.
+    :returns: List of prefix strings originated by the ASN.
+    :raises requests.HTTPError: If the table export cannot be downloaded.
+    """
     asn = asn.strip()
     if asn.lower().startswith("as"):
         asn = asn[2:]

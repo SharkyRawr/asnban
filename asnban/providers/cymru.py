@@ -10,6 +10,13 @@ CYMRU_RESULT_RE = re.compile(r"(.+)\s*\|\s*(.+)\s?\|\s*(.+)\s?")
 
 
 def query(qry: str) -> typing.Tuple[str, str, str]:
+    """Look up an IPv4 address with Team Cymru's whois service.
+
+    :param qry: IPv4 address to look up.
+    :returns: Tuple of ``(asn, ip, name)``.
+    :raises requests.HTTPError: If the HTTP request fails.
+    :raises Exception: If the response has an unexpected format.
+    """
     args = {
         "action": (None, "do_whois"),
         "family": (None, "ipv4"),
