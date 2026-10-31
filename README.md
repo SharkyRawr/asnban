@@ -2,6 +2,8 @@
 
 A python script to query and quickly ban whole prefixes for any given autonomous system.
 
+API documentation: <https://sharkyrawr.github.io/asnban/>
+
 ## How to use
 
 - Lookup the owner of an IP address:
