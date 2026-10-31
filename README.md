@@ -50,3 +50,16 @@ commands = asnban.iptables_commands(prefixes)
 ```
 
 The library returns `PrefixList` objects (validated prefixes, convertible to `list[str]`) or suggested command strings; the CLI is only a frontend.
+
+When an IP has multiple AS origins, `lookup_ip()` keeps its `(asn, ip, name)` tuple
+and returns space-separated ASNs with semicolon-separated names. `prefixes_for_ip()`
+and `--ban` include prefixes from every origin, removing duplicates. Unannounced IPs
+return `NA` ownership and an empty prefix list.
+
+ASNs may have a leading `AS` and leading zeros; malformed or out-of-range values
+are rejected. Prefixes cannot contain IPv6 scope identifiers. Generated commands
+quote shell arguments and are never executed by the library or CLI.
+
+The bgp.tools export is cached for two hours in `$XDG_CACHE_HOME/asnban/table.txt`
+(default: `~/.cache/asnban/table.txt`). Downloads are validated before replacing the
+cache. Provider requests use a 5-second connection timeout and a 30-second read timeout.

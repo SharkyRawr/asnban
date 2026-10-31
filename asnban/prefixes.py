@@ -16,6 +16,8 @@ class Prefix:
         if not isinstance(value, str):
             raise TypeError(f"prefix must be a string, got {type(value).__name__}")
         try:
+            if "%" in value:
+                raise ValueError("scoped IPv6 networks are not supported")
             self._value = str(ipaddress.ip_network(value, strict=True))
         except ValueError as exc:
             raise ValueError(f"invalid prefix: {value!r}") from exc

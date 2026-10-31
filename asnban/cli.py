@@ -35,13 +35,11 @@ def build_parser() -> ArgumentParser:
     )
     ap.add_argument(
         "--iptables-chain",
-        nargs="?",
         default=DEFAULT_CHAIN,
         help="which chain to insert into, defaults to INPUT (combine with --iptables)",
     )
     ap.add_argument(
         "--iptables-action",
-        nargs="?",
         default=DEFAULT_ACTION,
         help="which action to use, defaults to DROP (combine with --iptables)",
     )
@@ -93,11 +91,15 @@ def main() -> None:
         ap.print_help()
         sys.exit(1)
 
-    if args.ip:
-        asn, ip, name = lookup_ip(args.ip)
-        print(f"{ip} - AS{asn} - {name}")
-        return
+    try:
+        if args.ip:
+            asns, ip, name = lookup_ip(args.ip)
+            owners = ", ".join(f"AS{asn}" for asn in asns.split())
+            print(f"{ip} - {owners} - {name}")
+            return
 
-    prefixes = prefixes_for_asn(args.asn) if args.asn else prefixes_for_ip(args.ban)
-    for line in render(prefixes, args):
-        print(line)
+        prefixes = prefixes_for_asn(args.asn) if args.asn else prefixes_for_ip(args.ban)
+        for line in render(prefixes, args):
+            print(line)
+    except ValueError as exc:
+        ap.error(str(exc))

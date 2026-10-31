@@ -5,6 +5,7 @@ parsing and returns validated prefix lists or ready-to-run command strings.
 """
 
 import ipaddress
+from shlex import join as shell_join
 
 from .prefixes import Prefix, PrefixList
 from .providers import bgptools, cymru
@@ -26,10 +27,11 @@ DEFAULT_ACTION = "DROP"
 
 
 def lookup_ip(ip: str) -> tuple[str, str, str]:
-    """Look up the AS that owns an IP address.
+    """Look up the AS origins of an IP address.
 
     :param ip: IPv4 address to look up.
-    :returns: Tuple of ``(asn, ip, name)``, where ``asn`` has no ``AS`` prefix.
+    :returns: Tuple of ``(asn, ip, name)``, without ``AS`` prefixes. Multiple
+        origins use space-separated ASNs and semicolon-separated names.
     :raises requests.HTTPError: If the lookup request fails.
     """
     return cymru.query(ip)
@@ -44,20 +46,26 @@ def prefixes_for_asn(asn: str) -> PrefixList:
     :param asn: ASN, with or without a leading ``AS``.
     :returns: Validated prefixes originated by the ASN.
     :raises requests.HTTPError: If the table export cannot be downloaded.
-    :raises ValueError: If bgp.tools returns an invalid prefix.
+    :raises ValueError: If the ASN or bgp.tools table is invalid.
     """
     return PrefixList(bgptools.query_prefixes(asn))
 
 
 def prefixes_for_ip(ip: str) -> PrefixList:
-    """Return the prefixes originated by the AS that owns an IP address.
+    """Return unique prefixes from every AS originating an IP address.
 
     :param ip: IPv4 address to look up.
-    :returns: Validated prefixes originated by the AS.
+    :returns: Validated prefixes from all origins, or an empty list if unannounced.
     :raises requests.HTTPError: If a lookup or table download fails.
     """
-    asn, _, _ = lookup_ip(ip)
-    return prefixes_for_asn(asn)
+    asns, _, _ = lookup_ip(ip)
+    if asns == "NA":
+        return PrefixList()
+    return PrefixList(
+        dict.fromkeys(
+            str(prefix) for asn in asns.split() for prefix in prefixes_for_asn(asn)
+        )
+    )
 
 
 def iptables_commands(
@@ -88,7 +96,9 @@ def iptables_commands(
             "ip6tables" if isinstance(network, ipaddress.IPv6Network) else "iptables"
         )
         mode = "I" if insert else "A"
-        commands.append(f"{binary} -{mode} {chain} -s {prefix} -j {action}")
+        commands.append(
+            shell_join([binary, f"-{mode}", chain, "-s", str(prefix), "-j", action])
+        )
     return commands
 
 
@@ -101,4 +111,6 @@ def ufw_commands(prefixes: PrefixList) -> list[str]:
     """
     if not isinstance(prefixes, PrefixList):
         raise TypeError("prefixes must be a PrefixList")
-    return [f"ufw insert 1 deny from {prefix}" for prefix in prefixes]
+    return [
+        shell_join(["ufw", "insert", "1", "deny", "from", str(p)]) for p in prefixes
+    ]

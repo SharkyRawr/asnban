@@ -93,6 +93,35 @@ def test_main_ip(monkeypatch, capsys):
     assert capsys.readouterr().out == "1.1.1.1 - AS13335 - CLOUDFLARENET\n"
 
 
+def test_main_ip_multiple_origins(monkeypatch, capsys):
+    monkeypatch.setattr(
+        cli, "lookup_ip", lambda ip: ("138421 149511", ip, "CU-CN-AS; YNCL-AS-AP")
+    )
+    run(monkeypatch, "--ip", "1.1.8.1")
+    assert capsys.readouterr().out == (
+        "1.1.8.1 - AS138421, AS149511 - CU-CN-AS; YNCL-AS-AP\n"
+    )
+
+
+@pytest.mark.parametrize("flag", ["--iptables-chain", "--iptables-action"])
+def test_firewall_options_require_values(flag):
+    with pytest.raises(SystemExit) as exc:
+        parse("--asn", "64496", "--iptables", flag)
+    assert exc.value.code == 2
+
+
+def test_main_rejects_invalid_asn(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "asnban.bgptools._table_text", lambda: pytest.fail("unexpected table lookup")
+    )
+    with pytest.raises(SystemExit) as exc:
+        run(monkeypatch, "--asn", "not-an-asn", "--iptables")
+    assert exc.value.code == 2
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "invalid ASN" in output.err
+
+
 def test_main_asn(monkeypatch, capsys):
     monkeypatch.setattr(cli, "prefixes_for_asn", lambda asn: PREFIXES)
     run(monkeypatch, "--asn", "64496")

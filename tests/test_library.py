@@ -1,3 +1,7 @@
+import os
+import shlex
+import subprocess
+
 import pytest
 
 from asnban import (
@@ -31,6 +35,12 @@ def test_prefix_rejects_type():
 def test_prefix_rejects_invalid():
     with pytest.raises(ValueError, match="invalid prefix"):
         Prefix("not-a-prefix")
+
+
+@pytest.mark.parametrize("scope", ["eth0", "eth0; printf INJECTED; #"])
+def test_prefix_rejects_ipv6_scope(scope):
+    with pytest.raises(ValueError, match="invalid prefix"):
+        Prefix(f"fe80::%{scope}/64")
 
 
 def test_prefix_list_converts():
@@ -86,6 +96,28 @@ def test_prefixes_for_ip(monkeypatch):
     assert prefixes_for_ip("192.0.2.1").to_list() == STRINGS
 
 
+def test_prefixes_for_ip_combines_origins(monkeypatch):
+    monkeypatch.setattr(
+        "asnban.cymru.query", lambda ip: ("64496 64500", ip, "FIRST; SECOND")
+    )
+    monkeypatch.setattr(
+        "asnban.bgptools._table_text",
+        lambda: "192.0.2.0/24 64496\n192.0.2.0/24 64500\n198.51.100.0/24 64500\n",
+    )
+    assert prefixes_for_ip("192.0.2.1").to_list() == [
+        "192.0.2.0/24",
+        "198.51.100.0/24",
+    ]
+
+
+def test_prefixes_for_unannounced_ip(monkeypatch):
+    monkeypatch.setattr("asnban.cymru.query", lambda ip: ("NA", ip, "NA"))
+    monkeypatch.setattr(
+        "asnban.bgptools._table_text", lambda: pytest.fail("unexpected table lookup")
+    )
+    assert prefixes_for_ip("192.0.2.1").to_list() == []
+
+
 def test_iptables_commands():
     assert iptables_commands(PREFIXES) == [
         "iptables -A INPUT -s 192.0.2.0/24 -j DROP",
@@ -100,6 +132,23 @@ def test_iptables_commands_options():
         "iptables -I FORWARD -s 192.0.2.0/24 -j REJECT",
         "ip6tables -I FORWARD -s 2001:db8::/32 -j REJECT",
     ]
+
+
+@pytest.mark.parametrize("option", ["chain", "action"])
+@pytest.mark.skipif(os.name == "nt", reason="generated commands use a POSIX shell")
+def test_iptables_commands_quote_shell_arguments(option):
+    value = "INPUT; printf INJECTED #"
+    command = iptables_commands(PrefixList([STRINGS[0]]), **{option: value})[0]
+    arguments = shlex.split(command)
+    assert arguments[2 if option == "chain" else 6] == value
+    result = subprocess.run(
+        ["/bin/sh", "-c", "iptables() { :; }\n" + command],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=5,
+    )
+    assert result.stdout == ""
 
 
 def test_iptables_commands_rejects_list():

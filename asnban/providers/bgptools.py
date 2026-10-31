@@ -1,10 +1,12 @@
 import os
 import time
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import requests
 
-from . import USER_AGENT
+from ..prefixes import Prefix
+from . import HTTP_TIMEOUT, USER_AGENT, normalize_asn
 
 __ENDPOINT = "https://bgp.tools/table.txt"
 __CACHE_TTL = 2 * 60 * 60
@@ -16,19 +18,35 @@ def _cache_path() -> Path:
     return base / "asnban" / "table.txt"
 
 
+def _validate_table(text: str) -> None:
+    if not text.strip():
+        raise ValueError("bgp.tools returned an empty table")
+    try:
+        for line in text.splitlines():
+            prefix, origin = line.split()
+            Prefix(prefix)
+            if origin != normalize_asn(origin):
+                raise ValueError("non-canonical ASN")
+    except ValueError as exc:
+        raise ValueError("bgp.tools returned an invalid table") from exc
+
+
 def _table_text() -> str:
     cache = _cache_path()
     if cache.is_file() and time.time() - cache.stat().st_mtime < __CACHE_TTL:
-        return cache.read_text()
+        return cache.read_text(encoding="utf-8")
 
-    response = requests.get(__ENDPOINT, headers=__STATIC_HEADERS)
+    response = requests.get(__ENDPOINT, headers=__STATIC_HEADERS, timeout=HTTP_TIMEOUT)
     response.raise_for_status()
+    text = response.text
+    _validate_table(text)
 
     cache.parent.mkdir(parents=True, exist_ok=True)
-    tmp = cache.with_name(cache.name + ".tmp")
-    tmp.write_text(response.text)
-    tmp.replace(cache)
-    return response.text
+    with TemporaryDirectory(dir=cache.parent, prefix="table-") as directory:
+        tmp = Path(directory) / cache.name
+        tmp.write_text(text, encoding="utf-8")
+        tmp.replace(cache)
+    return text
 
 
 def query_prefixes(asn: str) -> list[str]:
@@ -40,10 +58,9 @@ def query_prefixes(asn: str) -> list[str]:
     :param asn: ASN, with or without a leading ``AS``.
     :returns: List of prefix strings originated by the ASN.
     :raises requests.HTTPError: If the table export cannot be downloaded.
+    :raises ValueError: If the ASN or downloaded table is invalid.
     """
-    asn = asn.strip()
-    if asn.lower().startswith("as"):
-        asn = asn[2:]
+    asn = normalize_asn(asn)
 
     prefixes = []
     for line in _table_text().splitlines():
