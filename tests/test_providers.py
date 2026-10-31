@@ -1,6 +1,6 @@
 import pytest
 
-from providers import USER_AGENT, bgptools, cymru
+from asnban.providers import USER_AGENT, bgptools, cymru
 
 PREFIXES = ["192.0.2.0/24", "2001:db8::/32"]
 

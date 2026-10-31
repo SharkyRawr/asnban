@@ -5,7 +5,7 @@ requires-python = ">=3.15"
 [[package]]
 name = "asnban"
 version = "1.0.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "pyyaml" },

@@ -1,7 +1,11 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "asnban"
 version = "1.0.0"
-description = "A python script to query and quickly ban whole prefixes for any given autonomous system."
+description = "Query and quickly ban whole prefixes for any given autonomous system."
 readme = "README.md"
 requires-python = ">=3.15"
 license = "MIT"
@@ -11,6 +15,9 @@ dependencies = [
     "beautifulsoup4",
     "PyYAML",
 ]
+
+[project.scripts]
+asnban = "asnban.cli:main"
 
 [dependency-groups]
 dev = [
@@ -22,7 +29,7 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-addopts = "--cov=asnban --cov=providers --cov-report=term-missing"
+addopts = "--cov=asnban --cov-report=term-missing"
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
