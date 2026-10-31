@@ -3,13 +3,10 @@ import typing
 import requests
 from bs4 import BeautifulSoup
 
+from . import USER_AGENT
+
 __ENDPOIT = 'https://bgp.tools/as/'
-__STATIC_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:103.0) Gecko/20100101 Firefox/103.0',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/jxl,image/webp,*/*;q=0.8'
-    'Accept-Language' 'en,de;q=0.7,en-US;q=0.3',
-    'DNT': '1',
-}
+__STATIC_HEADERS = {'User-Agent': USER_AGENT}
 
 
 def query_prefixes(asn: str) -> typing.List[str]:
