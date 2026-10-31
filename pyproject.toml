@@ -16,7 +16,13 @@ dependencies = [
 dev = [
     "black",
     "ruff",
+    "pytest",
+    "pytest-cov",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "--cov=asnban --cov=providers --cov-report=term-missing"
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
