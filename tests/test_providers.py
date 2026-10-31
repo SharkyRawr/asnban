@@ -2,18 +2,13 @@ import pytest
 
 from asnban.providers import USER_AGENT, bgptools, cymru
 
-PREFIXES = ["192.0.2.0/24", "2001:db8::/32"]
-
 CYMRU_TEXT = """AS | IP | Name
 13335 | 1.1.1.1 | CLOUDFLARENET
 """
 
-BGPLIST_HTML = """
-<table><tbody id="prefixlist-tbody">
-<tr><td>Prefix</td><td>AS</td></tr>
-<tr><td>1</td><td>192.0.2.0/24</td></tr>
-<tr><td>2</td><td>2001:db8::/32</td></tr>
-</tbody></table>
+TABLE_TEXT = """192.0.2.0/24 64496
+2001:db8::/32 64496
+198.51.100.0/24 64500
 """
 
 
@@ -40,13 +35,41 @@ def test_cymru_unexpected_response(monkeypatch):
         cymru.query("1.1.1.1")
 
 
-def test_bgptools_query(monkeypatch):
+def test_bgptools_cache_path(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+    assert bgptools._cache_path() == tmp_path / "asnban" / "table.txt"
+
+
+def test_bgptools_query(monkeypatch, tmp_path):
     calls = []
 
     def fake_get(url, headers):
         calls.append((url, headers))
-        return FakeResponse(BGPLIST_HTML)
+        return FakeResponse(TABLE_TEXT)
 
     monkeypatch.setattr(bgptools.requests, "get", fake_get)
-    assert bgptools.query_prefixes("AS64496") == PREFIXES
-    assert calls == [("https://bgp.tools/as/64496", {"User-Agent": USER_AGENT})]
+    monkeypatch.setattr(bgptools, "_cache_path", lambda: tmp_path / "table.txt")
+
+    assert bgptools.query_prefixes("AS64496") == [
+        "192.0.2.0/24",
+        "2001:db8::/32",
+    ]
+    assert calls == [("https://bgp.tools/table.txt", {"User-Agent": USER_AGENT})]
+
+
+def test_bgptools_uses_cache(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_get(url, headers):
+        calls.append(url)
+        return FakeResponse(TABLE_TEXT)
+
+    cache = tmp_path / "table.txt"
+    monkeypatch.setattr(bgptools.requests, "get", fake_get)
+    monkeypatch.setattr(bgptools, "_cache_path", lambda: cache)
+
+    expected = ["192.0.2.0/24", "2001:db8::/32"]
+    assert bgptools.query_prefixes("64496") == expected
+    assert bgptools.query_prefixes("64496") == expected
+    assert calls == ["https://bgp.tools/table.txt"]
+    assert cache.is_file()

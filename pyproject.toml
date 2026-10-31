@@ -12,7 +12,6 @@ license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
     "requests",
-    "beautifulsoup4",
     "PyYAML",
 ]
 
