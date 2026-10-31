@@ -7,6 +7,7 @@ from argparse import ArgumentParser, Namespace
 from . import (
     DEFAULT_ACTION,
     DEFAULT_CHAIN,
+    PrefixList,
     iptables_commands,
     lookup_ip,
     prefixes_for_asn,
@@ -55,8 +56,8 @@ def build_parser() -> ArgumentParser:
     return ap
 
 
-def render(prefixes: list[str], args: Namespace) -> list[str]:
-    """Turn prefixes into the output lines requested by the CLI flags."""
+def render(prefixes: PrefixList, args: Namespace) -> list[str]:
+    """Turn a prefix list into the output lines requested by the CLI flags."""
     if args.iptables:
         return iptables_commands(
             prefixes,
@@ -66,7 +67,7 @@ def render(prefixes: list[str], args: Namespace) -> list[str]:
         )
 
     if args.json:
-        return [json.dumps(prefixes, indent=2, separators=(",", ": "))]
+        return [json.dumps(prefixes.to_list(), indent=2, separators=(",", ": "))]
 
     if args.yaml:
         try:
@@ -76,12 +77,12 @@ def render(prefixes: list[str], args: Namespace) -> list[str]:
                 "Could not import PyYAML, YAML output not supported.\n"
                 "You may try to fix this with: 'pip install PyYAML' and then retrying your last commad."
             ]
-        return [yaml_dump({"prefixes": prefixes})]
+        return [yaml_dump({"prefixes": prefixes.to_list()})]
 
     if args.ufw:
         return ufw_commands(prefixes)
 
-    return prefixes
+    return prefixes.to_list()
 
 
 def main() -> None:

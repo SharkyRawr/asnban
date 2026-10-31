@@ -5,9 +5,9 @@ import sys
 
 import pytest
 
-from asnban import cli
+from asnban import PrefixList, cli
 
-PREFIXES = ["192.0.2.0/24", "2001:db8::/32"]
+PREFIXES = PrefixList(["192.0.2.0/24", "2001:db8::/32"])
 
 
 def parse(*argv):
@@ -20,13 +20,13 @@ def run(monkeypatch, *argv):
 
 
 def test_render_default():
-    assert cli.render(PREFIXES, parse()) == PREFIXES
+    assert cli.render(PREFIXES, parse()) == PREFIXES.to_list()
 
 
 def test_render_json():
     lines = cli.render(PREFIXES, parse("--json"))
     assert len(lines) == 1
-    assert json.loads(lines[0]) == PREFIXES
+    assert json.loads(lines[0]) == PREFIXES.to_list()
 
 
 def test_render_yaml():
@@ -96,7 +96,7 @@ def test_main_ip(monkeypatch, capsys):
 def test_main_asn(monkeypatch, capsys):
     monkeypatch.setattr(cli, "prefixes_for_asn", lambda asn: PREFIXES)
     run(monkeypatch, "--asn", "64496")
-    assert capsys.readouterr().out.splitlines() == PREFIXES
+    assert capsys.readouterr().out.splitlines() == PREFIXES.to_list()
 
 
 def test_main_ban(monkeypatch, capsys):

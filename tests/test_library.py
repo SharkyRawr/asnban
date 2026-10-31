@@ -1,4 +1,8 @@
+import pytest
+
 from asnban import (
+    Prefix,
+    PrefixList,
     iptables_commands,
     lookup_ip,
     prefixes_for_asn,
@@ -6,7 +10,60 @@ from asnban import (
     ufw_commands,
 )
 
-PREFIXES = ["192.0.2.0/24", "2001:db8::/32"]
+STRINGS = ["192.0.2.0/24", "2001:db8::/32"]
+PREFIXES = PrefixList(STRINGS)
+
+
+def test_prefix_validates_and_normalizes():
+    assert str(Prefix("2001:DB8::/32")) == "2001:db8::/32"
+    assert str(Prefix.from_str("192.0.2.0/24")) == "192.0.2.0/24"
+
+
+def test_prefix_repr():
+    assert repr(Prefix("192.0.2.0/24")) == "Prefix('192.0.2.0/24')"
+
+
+def test_prefix_rejects_type():
+    with pytest.raises(TypeError):
+        Prefix(123)
+
+
+def test_prefix_rejects_invalid():
+    with pytest.raises(ValueError, match="invalid prefix"):
+        Prefix("not-a-prefix")
+
+
+def test_prefix_list_converts():
+    assert PREFIXES.to_list() == STRINGS
+    assert PrefixList.from_iterable(STRINGS).to_list() == STRINGS
+    assert PrefixList.from_iterable(p for p in STRINGS).to_list() == STRINGS
+    assert PrefixList([Prefix("192.0.2.0/24")]).to_list() == ["192.0.2.0/24"]
+    assert len(PREFIXES) == 2
+    assert [str(prefix) for prefix in PREFIXES] == STRINGS
+
+
+def test_prefix_list_repr():
+    assert repr(PREFIXES) == "PrefixList(['192.0.2.0/24', '2001:db8::/32'])"
+
+
+def test_prefix_list_rejects_single_string():
+    with pytest.raises(TypeError):
+        PrefixList("192.0.2.0/24")
+
+
+def test_prefix_list_from_iterable_rejects_string():
+    with pytest.raises(TypeError):
+        PrefixList.from_iterable("192.0.2.0/24")
+
+
+def test_prefix_list_rejects_bad_item():
+    with pytest.raises(TypeError):
+        PrefixList([1])
+
+
+def test_prefix_list_validates_strings():
+    with pytest.raises(ValueError):
+        PrefixList(["not-a-prefix"])
 
 
 def test_lookup_ip(monkeypatch):
@@ -17,16 +74,16 @@ def test_lookup_ip(monkeypatch):
 
 
 def test_prefixes_for_asn(monkeypatch):
-    monkeypatch.setattr("asnban.bgptools.query_prefixes", lambda asn: PREFIXES)
-    assert prefixes_for_asn("64496") == PREFIXES
+    monkeypatch.setattr("asnban.bgptools.query_prefixes", lambda asn: STRINGS)
+    assert prefixes_for_asn("64496").to_list() == STRINGS
 
 
 def test_prefixes_for_ip(monkeypatch):
     monkeypatch.setattr(
         "asnban.cymru.query", lambda ip: ("64496", "192.0.2.1", "EXAMPLE")
     )
-    monkeypatch.setattr("asnban.bgptools.query_prefixes", lambda asn: PREFIXES)
-    assert prefixes_for_ip("192.0.2.1") == PREFIXES
+    monkeypatch.setattr("asnban.bgptools.query_prefixes", lambda asn: STRINGS)
+    assert prefixes_for_ip("192.0.2.1").to_list() == STRINGS
 
 
 def test_iptables_commands():
@@ -45,8 +102,18 @@ def test_iptables_commands_options():
     ]
 
 
+def test_iptables_commands_rejects_list():
+    with pytest.raises(TypeError):
+        iptables_commands(STRINGS)
+
+
 def test_ufw_commands():
     assert ufw_commands(PREFIXES) == [
         "ufw insert 1 deny from 192.0.2.0/24",
         "ufw insert 1 deny from 2001:db8::/32",
     ]
+
+
+def test_ufw_commands_rejects_list():
+    with pytest.raises(TypeError):
+        ufw_commands(STRINGS)

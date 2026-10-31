@@ -45,7 +45,8 @@ API documentation: <https://sharkyrawr.github.io/asnban/>
 import asnban
 
 prefixes = asnban.prefixes_for_asn("64496")
+print(prefixes.to_list())  # ['24.92.187.0/24', ...]
 commands = asnban.iptables_commands(prefixes)
 ```
 
-The library returns lists of prefix strings or suggested command strings; the CLI is only a frontend.
+The library returns `PrefixList` objects (validated prefixes, convertible to `list[str]`) or suggested command strings; the CLI is only a frontend.
